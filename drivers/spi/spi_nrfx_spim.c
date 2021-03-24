@@ -395,9 +395,13 @@ static int spim_nrfx_pm_control(const struct device *dev,
 			? NRF_GPIO_PIN_PULLDOWN		\
 			: NRF_GPIO_PIN_NOPULL)
 
-#define SPI_NRFX_SPIM_EXTENDED_CONFIG(idx)				\
-	IF_ENABLED(NRFX_SPIM_EXTENDED_ENABLED,				\
-		(.dcx_pin = NRFX_SPIM_PIN_NOT_USED,			\
+#define SPIM_NRFX_GET_DCX_PIN(idx) \
+	UTIL_OR(UTIL_AND(DT_NODE_HAS_PROP(SPIM(idx), dcx_pin), \
+			DT_PROP(SPIM(idx), dcx_pin)), NRFX_SPIM_PIN_NOT_USED)
+
+#define SPI_NRFX_SPIM_EXTENDED_CONFIG(idx)				    \
+	IF_ENABLED(NRFX_SPIM_EXTENDED_ENABLED,				    \
+		(.dcx_pin = SPIM_NRFX_GET_DCX_PIN(idx),			    \
 		 IF_ENABLED(SPIM##idx##_FEATURE_RXDELAY_PRESENT,	\
 			(.rx_delay = CONFIG_SPI_##idx##_NRF_RX_DELAY,))	\
 		))
