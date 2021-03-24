@@ -17,3 +17,9 @@ properties:
       type: boolean
       required: false
       description: Enable pull-down on MISO line
+
+    dcx-pin:
+      type: int
+      required: false
+      description: |
+        GPIO to use as DCX.
