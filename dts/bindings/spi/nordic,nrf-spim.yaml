@@ -23,3 +23,9 @@ properties:
       required: false
       description: |
         GPIO to use as DCX.
+        
+    csn-pin:
+      type: int
+      required: false
+      description: |
+        GPIO to use as Chip Select.
