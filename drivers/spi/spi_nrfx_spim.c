@@ -144,7 +144,9 @@ static int configure(const struct device *dev,
 	}
 
 	ctx->config = spi_cfg;
-	spi_context_cs_configure(ctx);
+	if (get_dev_config(dev)->config.use_hw_ss == false) {
+		spi_context_cs_configure(ctx);
+	}
 
 	/* Limit the frequency to that supported by the SPIM instance */
 	freq = get_nrf_spim_frequency(MIN(spi_cfg->frequency,
@@ -209,7 +211,9 @@ static void transfer_next_chunk(const struct device *dev)
 		}
 	}
 
-	spi_context_cs_control(ctx, false);
+	if (get_dev_config(dev)->config.use_hw_ss == false) {
+		spi_context_cs_control(ctx, false);
+	}
 
 	LOG_DBG("Transaction finished with status %d", error);
 
@@ -234,7 +238,9 @@ static int transceive(const struct device *dev,
 		dev_data->busy = true;
 
 		spi_context_buffers_setup(&dev_data->ctx, tx_bufs, rx_bufs, 1);
-		spi_context_cs_control(&dev_data->ctx, true);
+		if (get_dev_config(dev)->config.use_hw_ss == false) {
+			spi_context_cs_control(&dev_data->ctx, true);
+		}
 
 		transfer_next_chunk(dev);
 
@@ -400,9 +406,14 @@ static int spim_nrfx_pm_control(const struct device *dev,
 	UTIL_OR(UTIL_AND(DT_NODE_HAS_PROP(SPIM(idx), dcx_pin), \
 			DT_PROP(SPIM(idx), dcx_pin)), NRFX_SPIM_PIN_NOT_USED)
 
+#define SPIM_NRFX_GET_CSN_PIN(idx) \
+	UTIL_OR(UTIL_AND(DT_NODE_HAS_PROP(SPIM(idx), csn_pin), \
+			DT_PROP(SPIM(idx), csn_pin)), NRFX_SPIM_PIN_NOT_USED)
+
 #define SPI_NRFX_SPIM_EXTENDED_CONFIG(idx)				    \
 	IF_ENABLED(NRFX_SPIM_EXTENDED_ENABLED,				    \
 		(.dcx_pin = SPIM_NRFX_GET_DCX_PIN(idx),			    \
+		 .use_hw_ss = DT_NODE_HAS_PROP(SPIM(idx), csn_pin), \
 		 IF_ENABLED(SPIM##idx##_FEATURE_RXDELAY_PRESENT,	\
 			(.rx_delay = CONFIG_SPI_##idx##_NRF_RX_DELAY,))	\
 		))
@@ -434,7 +445,7 @@ static int spim_nrfx_pm_control(const struct device *dev,
 			.sck_pin   = SPIM_PROP(idx, sck_pin),		       \
 			.mosi_pin  = SPIM_PROP(idx, mosi_pin),		       \
 			.miso_pin  = SPIM_PROP(idx, miso_pin),		       \
-			.ss_pin    = NRFX_SPIM_PIN_NOT_USED,		       \
+			.ss_pin    = SPIM_NRFX_GET_CSN_PIN(idx),		   \
 			.orc       = CONFIG_SPI_##idx##_NRF_ORC,	       \
 			.frequency = NRF_SPIM_FREQ_4M,			       \
 			.mode      = NRF_SPIM_MODE_0,			       \
