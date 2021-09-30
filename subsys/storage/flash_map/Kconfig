@@ -28,6 +28,16 @@ config FLASH_MAP_CUSTOM
 	  User must provide such a description in place of default on
 	  if had enabled this option.
 
+config FLASH_MAP_DYNAMIC
+	bool "Use a dynamic flash map description"
+	help
+	  Instead of using a static, pre-defined flash map which is
+	  linked in the zephyr binary, this option allows the user
+	  to specify a dynamic map in a certain area of "flash".
+	  This option is never intended to be used without mcuboot
+	  and only handles very specialized cases, i.e. mcuboot wants
+	  to reconfigure the flash partitions. If unsure, say N.
+
 config FLASH_AREA_CHECK_INTEGRITY
 	bool "Enable flash check functions"
 	select TINYCRYPT
