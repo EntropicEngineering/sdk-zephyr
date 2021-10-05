@@ -4,80 +4,101 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <zephyr.h>
-#include <sys/printk.h>
-
+#include <zephyr/types.h>
+#include <stddef.h>
+#include <sys/types.h>
+#include <device.h>
+#include <storage/flash_map.h>
 #include <drivers/flash.h>
+#include <soc.h>
+#include <init.h>
+
 #include <storage/flash_map_dynamic.h>
-#include <fs/nvs.h>
 
-struct partition_header_info info = {
-	.flash_dev_id = 0,
-	.flash_dev_name = "NRF_FLASH_DRV_NAME",
-};
+static void enable_settings(void)
+{
+	int rc;
 
-struct flash_partition_info parts[] = {
-	{
-		.fa_id   = 0,
-		.fa_off  = 0xD000,
-		.fa_size = 0x1000,
-	},
-	{
-		.fa_id = 1,
-		.fa_off  = 0xE000,
-		.fa_size = 0x1000,
-	},
-	{
-		.fa_id = 2,
-		.fa_off  = 0xF000,
-		.fa_size = 0x1000,
-	},
-	{
-		.fa_id = 3,
-		.fa_off  = 0x10000,
-		.fa_size = 0x1000,
-	},
-	{
-		.fa_id = 4,
-		.fa_off  = 0x20000,
-		.fa_size = 0x1000,
-	},
-};
+	rc = settings_subsys_init();
+	if (rc != 0)
+		while (1); /* TODO: Do something better here.. */
+}
 
 void main(void)
 {
-	int ret, i;
+	int i, rc;
 
 	printk("Hello World! %s\n", CONFIG_BOARD);
 
-	ret = create_partition_table(&info);
-	if (ret != 0)
-	{
-		printk("create_partition_table failed (ret=%d) \r\n", ret);
-		while (1);
-	}
+	enable_settings();
 
-	for (i = 0; i < sizeof(parts) / sizeof(struct flash_partition_info); i ++)
+	/* First time write (assuming blank settings). */
 	{
-		ret = add_partition(&parts[i]);
-		if (ret != 0)
+		struct flash_partition_info parts[] = {
+			{
+				.fa_id = IMAGE_0_PARTITION_ID,
+				.fa_off  = 0x00030000,
+				.fa_size = 0x00020000,
+			},
+			{
+				.fa_id = IMAGE_1_PARTITION_ID,
+				.fa_off  = 0x00050000,
+				.fa_size = 0x00020000,
+			},
+		};
+
+		for (i = 0; i < sizeof(parts) / sizeof(struct flash_partition_info); i ++)
 		{
-			printk("add_partition failed (ret=%d) \r\n", ret);
-			while (1);
+			rc = add_partition_at_end(&parts[i]);
+			if (rc != 0)
+				while (1);
 		}
 	}
 
-	struct flash_partition_info tmp;
-	for (i = 0; i < sizeof(parts) / sizeof(struct flash_partition_info); i ++)
+	/* Write by Index */
 	{
-		ret = get_partition(&tmp, i);
-		if (ret != 0)
-		{
-			printk("get_partition failed (ret=%d) \r\n", ret);
-			while (1);
-		}
+		struct flash_partition_info new1[] = {
+			{
+				.fa_id = IMAGE_0_PARTITION_ID,
+				.fa_off  = 0x00030000,
+				.fa_size = 0x00040000,
+			},
+			{
+				.fa_id = IMAGE_1_PARTITION_ID,
+				.fa_off  = 0x00070000,
+				.fa_size = 0x000b0000,
+			},
+		};
 
-		printk("fa_id = %x, fa_off = %x, fa_size = %x \r\n", tmp.fa_id, tmp.fa_off, tmp.fa_size);
+		for (i = 0; i < sizeof(new1) / sizeof(struct flash_partition_info); i ++)
+		{
+			rc = add_partition_at_index(i, &new1[i]);
+			if (rc != 0)
+				while (1);
+		}
+	}
+
+	/* Write by Id */
+	{
+		struct flash_partition_info new2[] = {
+			{
+				.fa_id = IMAGE_0_PARTITION_ID,
+				.fa_off  = 0x00030000,
+				.fa_size = 0x00030000,
+			},
+			{
+				.fa_id = IMAGE_1_PARTITION_ID,
+				.fa_off  = 0x00060000,
+				.fa_size = 0x00090000,
+			},
+		};
+
+		for (i = 0; i < sizeof(new2) / sizeof(struct flash_partition_info); i ++)
+		{
+			rc = add_partition_by_id(new2[i].fa_id, &new2[i]);
+			if (rc != 0)
+				while (1);
+		}
 	}
 
 }

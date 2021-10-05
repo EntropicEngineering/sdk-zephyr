@@ -7,160 +7,214 @@
 #include <storage/flash_map_dynamic.h>
 #include <storage/flash_map.h>
 
-struct flash_map_info {
-	uint32_t map_magic; /* Magic (0xDEADBEEF) to tell if the partition map is valid or not. */
-	uint8_t  partition_cnt;
-	uint8_t  pad[3]; /* sizeof(struct map_info) = 8. */
+#include "settings/settings.h"
+#include <errno.h>
+
+struct direct_immediate_value {
+	size_t len;
+	void *dest;
+	uint8_t fetched;
 };
 
-/* First 64 bytes are reserved to keep the header info. */
-#define RESERVED_BYTES   64
-
-/* Size of each partition (should be 12 ideally). */
-#define PARTITION_SIZE   16
-
-#define MAX_PARTITIONS   (8-1) /* Arbitrary. */
-#define VALID_MAP_MAGIC  0xDEADBEEF
-
-#define FLASH_MAP_OK        0
-#define FLASH_MAP_NOT_INIT -1
-#define FLASH_MAP_FULL     -2
-#define FLASH_MAP_OOB      -3
-
-#define PARTITION_NO 2 /* TODO */
-
-int create_partition_table(struct partition_header_info *info)
+static int nvs_load_callback(const char *name, size_t len,
+					 settings_read_cb read_cb, void *cb_arg,
+					 void *param)
 {
-	int ret;
-	const struct flash_area *fap;
-	const uint8_t magic[]  = {0xEF, 0xBE, 0xAD, 0xDE, 0x00, 0x00, 0x00, 0x00}; /* Need to find a better way to do this tbh.. */
-	const uint8_t dev_id[] = {info->flash_dev_id, 0x00, 0x00, 0x00};
+	const char *next;
+	size_t name_len;
+	int rc;
+	struct direct_immediate_value *one_value =
+					(struct direct_immediate_value *)param;
 
-	if (info == NULL)
-		return -EIO;
+	name_len = settings_name_next(name, &next);
+	if (name_len != 0)
+		return 0;
 
-	ret = flash_area_open(PARTITION_NO, &fap);
-	if (ret != 0)
-		return ret;
+	if (len == one_value->len) {
+		rc = read_cb(cb_arg, one_value->dest, len);
+		if (rc >= 0) {
+			one_value->fetched = 1;
+			return 0;
+		}
 
-	/* Erase before writing. */
-	ret = flash_area_erase(fap, 0, 4096);
-	if (ret != 0)
-		goto exit;
+		return rc;
+	}
 
-	/* Write Magic (and clear partition count). */
-	ret = flash_area_write(fap, 0, (const void *) magic, sizeof(magic));
-	if (ret != 0)
-		goto exit;
-
-	/* Write Dev Id. */
-	ret = flash_area_write(fap, 8, (const void *) dev_id, sizeof(dev_id));
-	if (ret != 0)
-		goto exit;
-
-	/* Write Dev Name. */
-	ret = flash_area_write(fap, 12, (const void *) info->flash_dev_name, sizeof(info->flash_dev_name));
-	if (ret != 0)
-		goto exit;
-
-exit:
-	flash_area_close(fap);
-	return ret;
+	return -EINVAL;
 }
 
-int add_partition(struct flash_partition_info *partition)
+static int read_from_nvs(const char *name, void *dest, size_t len)
 {
-	uint32_t offset;
-	struct flash_map_info map;
-	const struct flash_area *fap;
-	int ret;
+	int rc;
+	struct direct_immediate_value dov;
 
-	if (partition == NULL)
-		return -EIO;
+	dov.fetched = 0;
+	dov.len = len;
+	dov.dest = dest;
 
-	ret = flash_area_open(PARTITION_NO, &fap);
-	if (ret != 0)
-		return ret;
+	rc = settings_load_subtree_direct(name, nvs_load_callback, (void *)&dov);
+	if (rc != 0)
+		return rc;
 
-	/* Read header */
-	ret = flash_area_read(fap, 0, (void *) &map, sizeof(struct flash_map_info));
-	if (ret != 0)
-		goto exit;
+	if (dov.fetched == 0) /* No error, but nothing fetched.. */
+		return ENOENT;
 
-	if (map.map_magic != 0xDEADBEEF)
-	{
-		ret = FLASH_MAP_NOT_INIT;
-		goto exit;
-	}
-
-	if (map.partition_cnt >= MAX_PARTITIONS)
-	{
-		ret = FLASH_MAP_FULL;
-		goto exit;
-	}
-
-	/* Add new partition. */
-	offset = (map.partition_cnt++ * PARTITION_SIZE) + RESERVED_BYTES;
-	ret = flash_area_write(fap, offset, (const void *) partition, sizeof(struct flash_partition_info));
-	if (ret != 0)
-		goto exit;
-
-	ret = flash_area_erase(fap, 0, sizeof(struct flash_map_info));
-	ret = flash_area_write(fap, 0, (const void *) &map, sizeof(struct flash_map_info));
-
-exit:
-	flash_area_close(fap);
-	return ret;
+	return 0;
 }
 
-int get_partition(struct flash_partition_info *partition, int part_no)
+static int set_partition_cnt(uint8_t cnt)
 {
-	uint32_t offset;
-	struct flash_map_info map;
-	const struct flash_area *fap;
-	int ret;
-
-	if (partition == NULL)
-		return -EIO;
-
-	ret = flash_area_open(PARTITION_NO, &fap);
-	if (ret != 0)
-		return ret;
-
-	/* Read header */
-	ret = flash_area_read(fap, 0, (void *) &map, sizeof(struct flash_map_info));
-	if (ret != 0)
-	{
-		goto exit;
-		return ret;
-	}
-
-	if (map.map_magic != 0xDEADBEEF)
-	{
-		ret = FLASH_MAP_NOT_INIT;
-		goto exit;
-	}
-
-	if (part_no >= map.partition_cnt)
-	{
-		ret = FLASH_MAP_OOB;
-		goto exit;
-	}
-
-	/* Read partition info. */
-	offset = (part_no * PARTITION_SIZE) + RESERVED_BYTES;
-	ret = flash_area_read(fap, offset, (void *) partition, sizeof(struct flash_partition_info));
-
-exit:
-	flash_area_close(fap);
-	return ret;
+	return settings_save_one(PARTITION_CNT, (const void *)&cnt, sizeof(uint8_t));
 }
 
-/* Just deletes the magic, partition count. Everything else is still
- * the same. */
-int delete_partition_table(void)
+int get_partition_cnt(uint8_t *cnt)
 {
-	/* TODO */
-//	memset(&buffer[0], 0xFF, sizeof(struct flash_map_info));
-	return 0; /* Will probably change when we introduce flash. */
+	return read_from_nvs(PARTITION_CNT, (void *) cnt, sizeof(uint8_t));
+}
+
+static int get_partition_from_settings(uint8_t no, struct flash_partition_info *partition)
+{
+	int rc;
+	char partition_no[sizeof(PARTITION_NO)] = PARTITION_NO;
+
+	partition_no[sizeof(PARTITION_NO) - 2] = INT_TO_CHAR(no);
+	rc = read_from_nvs(partition_no, (void *) partition, sizeof(struct flash_partition_info));
+
+	return rc;
+}
+
+/* Gets the respective "partitions/${no}" instance. */
+int get_partition_at_index(uint8_t no, struct flash_partition_info *partition)
+{
+	int rc;
+	uint8_t cnt;
+
+	rc = get_partition_cnt(&cnt);
+	if (rc != 0)
+		return rc;
+
+	if (cnt < no)
+		return -ENOENT;
+
+	return get_partition_from_settings(no, partition);
+}
+
+/* Goes through all the available partitions and returns the partition for which
+ * partition->fa_id = id */
+int get_partition_by_id(int id, struct flash_partition_info *partition)
+{
+	int rc, i;
+	uint8_t cnt;
+	struct flash_partition_info tmp;
+
+	rc = get_partition_cnt(&cnt);
+	if (rc != 0)
+		return rc;
+
+	for (i = 0; i < cnt; i ++)
+	{
+		rc = get_partition_from_settings(i, &tmp);
+		if (rc != 0)
+			continue; /* No matter what, go through all iterations until cnt. */
+
+		if (tmp.fa_id == id)
+		{
+			partition->fa_id   = tmp.fa_id;
+			partition->fa_off  = tmp.fa_off;
+			partition->fa_size = tmp.fa_size;
+
+			return 0;
+		}
+	}
+
+	return -ENOENT;
+}
+
+/* This function writes the partition number required by the user (specified by
+ * the first argument). Valid options are 0-9, and we will write the partition
+ * info at "partitions/${no}. If there's something already at this entry, we
+ * will overwrite it with the new contents. If there's nothing at this partition
+ * entry, we exit with error. */
+int add_partition_at_index(uint8_t no, struct flash_partition_info *partition)
+{
+	int rc;
+	char partition_no[sizeof(PARTITION_NO)] = PARTITION_NO;
+	struct flash_partition_info tmp;
+
+	rc = get_partition_at_index(no, &tmp);
+	if (rc != 0)
+		return -EINVAL; /* Partition doesn't exist, Can't overwrite it. */
+
+	partition_no[sizeof(PARTITION_NO) - 2] = INT_TO_CHAR(no);
+	rc = settings_save_one(partition_no, (const void *) partition,
+			sizeof(struct flash_partition_info));
+
+	return rc;
+}
+
+/* This function goes through the complete list of available partitions and overrides the
+ * partition for which id matches with partition->fa_id. Exits with error if no such
+ * partition is found. The user would be expected to add a partition using add_partition_at_end
+ * in such a case. */
+int add_partition_by_id(uint8_t id, struct flash_partition_info *partition)
+{
+	int rc, i;
+	uint8_t cnt;
+	char partition_no[sizeof(PARTITION_NO)] = PARTITION_NO;
+	struct flash_partition_info tmp;
+
+	rc = get_partition_cnt(&cnt);
+	if (rc != 0)
+		return rc;
+
+	for (i = 0; i < cnt; i ++)
+	{
+		rc = get_partition_at_index(i, &tmp);
+		if (rc != 0)
+			continue;
+
+		if (tmp.fa_id == id)
+		{
+			partition_no[sizeof(PARTITION_NO) - 2] = INT_TO_CHAR(i);
+			rc = settings_save_one(partition_no, (const void *) partition,
+					sizeof(struct flash_partition_info));
+
+			return rc;
+		}
+	}
+
+	return -ENOENT;
+}
+
+/* This function adds a new partition to the system at get_partition_cnt+1. */
+int add_partition_at_end(struct flash_partition_info *partition)
+{
+	int rc;
+	uint8_t cnt;
+	char partition_no[sizeof(PARTITION_NO)] = PARTITION_NO;
+
+	rc = get_partition_cnt(&cnt);
+	if (rc != 0) /* Possible that this hasn't been written yet.. */
+	{
+		rc = set_partition_cnt(0);
+		if (rc != 0)
+			return rc;
+
+		/* Try to re-read the count (if it fails, exit). */
+		rc = get_partition_cnt(&cnt);
+		if (rc != 0)
+			return rc;
+	}
+
+	if (cnt >= MAX_PARTITIONS)
+		return -ENOENT;
+
+	partition_no[sizeof(PARTITION_NO) - 2] = INT_TO_CHAR(cnt);
+	rc = settings_save_one(partition_no, (const void *) partition,
+			sizeof(struct flash_partition_info));
+	if (rc != 0)
+		return rc;
+
+	cnt ++;
+	return set_partition_cnt(cnt);
 }

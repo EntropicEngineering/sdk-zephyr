@@ -18,12 +18,6 @@
 extern "C" {
 #endif
 
-struct partition_header_info {
-	uint8_t  flash_dev_id;
-	uint8_t  pad[3]; /* sizeof (struct map_header_info) = 36 */
-	char     flash_dev_name[32];
-};
-
 /* Replica of "struct flash_area" (flash_map.h) except for fa_device_id / fa_dev_name
  * which are placed in the "map_info" once. */
 struct flash_partition_info {
@@ -33,13 +27,26 @@ struct flash_partition_info {
 	size_t   fa_size;      /* Total size */
 };
 
-/* The user is expected to firslty "create" a table and then add individual partitions
- * to it. */
-int create_partition_table(struct partition_header_info *info);
-int add_partition(struct flash_partition_info *partition);
-int get_partition(struct flash_partition_info *partition, int part_no);
+/* Settings "Keys" */
+#define PARTITION_CNT "partitions/cnt"
+#define PARTITION_DEV_NAME "partitions/dev_name"
+#define PARTITION_NO "partitions/#" /* Support up to 10 partitions (0-9). */
 
-/* Delete the currently written partition table completely. */
-int delete_partition_table(void);
+#define INT_TO_CHAR(x) (x + '0')
+#define MAX_PARTITIONS 10
+
+/* Hardcoded fa_id for user. */
+#define IMAGE_0_PARTITION_ID FLASH_AREA_ID(image_0)
+#define IMAGE_1_PARTITION_ID FLASH_AREA_ID(image_1)
+#define STORAGE_PARTITION_ID FLASH_AREA_ID(storage)
+
+int add_partition_at_index(uint8_t no, struct flash_partition_info *partition);
+int add_partition_by_id(uint8_t id, struct flash_partition_info *partition);
+int add_partition_at_end(struct flash_partition_info *partition);
+
+int get_partition_at_index(uint8_t no, struct flash_partition_info *partition);
+int get_partition_by_id(int id, struct flash_partition_info *partition);
+
+int get_partition_cnt(uint8_t *cnt);
 
 #endif /* ZEPHYR_INCLUDE_STORAGE_FLASH_MAP_DYNAMIC_H_ */
