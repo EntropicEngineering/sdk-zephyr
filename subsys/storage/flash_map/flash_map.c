@@ -16,6 +16,8 @@
 #include <soc.h>
 #include <init.h>
 
+#include <storage/flash_map_dynamic.h>
+
 #if defined(CONFIG_FLASH_AREA_CHECK_INTEGRITY)
 #include <tinycrypt/constants.h>
 #include <tinycrypt/sha256.h>
@@ -34,24 +36,74 @@ struct layout_data {
 };
 #endif /* CONFIG_FLASH_PAGE_LAYOUT */
 
-extern const struct flash_area *flash_map;
-extern const int flash_map_entries;
+extern const struct flash_area *static_flash_map;
+extern const int static_flash_map_entries;
+
+static struct flash_area dynamic_flash_map[MAX_PARTITIONS]; /* Need to see if there is a better way.. */
+static int dynamic_map_entries;
+
+/* TODO: Can we try to not hardcode this? */
+static const struct flash_area storage_partition = {
+	.fa_id        = STORAGE_PARTITION_ID,
+	.fa_device_id = 0,
+
+	/* Reserve last page for storage. */
+	.fa_off       = 0xFDFA0,
+	.fa_size      = 8192,
+	.fa_dev_name  = "NRF_FLASH_DRV_NAME",
+};
+
+static struct flash_area *find_area_in_settings(int id)
+{
+	int rc, i;
+	struct flash_partition_info partition;
+
+	/* Firstly go through the "cached" entries. */
+	for (i = 0; i < dynamic_map_entries; i ++)
+	{
+		if (dynamic_flash_map[i].fa_id == id)
+			return &dynamic_flash_map[i];
+	}
+
+	rc = get_partition_by_id(id, &partition);
+	if (rc != 0)
+		return NULL;
+
+	/* Cache this partition. */
+	dynamic_flash_map[dynamic_map_entries].fa_id = partition.fa_id;
+	dynamic_flash_map[dynamic_map_entries].fa_off = partition.fa_off;
+	dynamic_flash_map[dynamic_map_entries].fa_size = partition.fa_size;
+
+	/* TODO: Make this cleaner.. */
+	dynamic_flash_map[dynamic_map_entries].fa_device_id = 0;
+	dynamic_flash_map[dynamic_map_entries].fa_dev_name = "NRF_FLASH_DRV_NAME";
+
+	return &dynamic_flash_map[dynamic_map_entries ++];
+}
 
 static struct flash_area const *get_flash_area_from_id(int idx)
 {
-	for (int i = 0; i < flash_map_entries; i++) {
-		if (flash_map[i].fa_id == idx) {
-			return &flash_map[i];
+	if (idx == STORAGE_PARTITION_ID)
+		return &storage_partition;
+
+	struct flash_area const *area =
+			(struct flash_area const *)find_area_in_settings(idx);
+	if (area != NULL)
+		return area;
+
+	for (int i = 0; i < static_flash_map_entries; i++) {
+		if (static_flash_map[i].fa_id == idx) {
+			return &static_flash_map[i];
 		}
 	}
 
 	return NULL;
 }
 
-void flash_area_foreach(flash_area_cb_t user_cb, void *user_data)
+void flash_area_foreach(flash_area_cb_t user_cb, void *user_data) /* TODO: Not important to fix, only used by Flash Shell. */
 {
-	for (int i = 0; i < flash_map_entries; i++) {
-		user_cb(&flash_map[i], user_data);
+	for (int i = 0; i < static_flash_map_entries; i++) {
+		user_cb(&static_flash_map[i], user_data);
 	}
 }
 
@@ -59,7 +111,7 @@ int flash_area_open(uint8_t id, const struct flash_area **fap)
 {
 	const struct flash_area *area;
 
-	if (flash_map == NULL) {
+	if (static_flash_map == NULL) {
 		return -EACCES;
 	}
 
