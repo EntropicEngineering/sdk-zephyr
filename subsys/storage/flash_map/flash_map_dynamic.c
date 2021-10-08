@@ -206,7 +206,7 @@ int add_partition_at_end(struct flash_partition_info *partition)
 			return rc;
 	}
 
-	if (cnt >= MAX_PARTITIONS)
+	if (cnt >= CONFIG_MAX_DYNAMIC_PARTITIONS)
 		return -ENOENT;
 
 	partition_no[sizeof(PARTITION_NO) - 2] = INT_TO_CHAR(cnt);

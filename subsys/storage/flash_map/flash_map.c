@@ -39,19 +39,8 @@ struct layout_data {
 extern const struct flash_area *static_flash_map;
 extern const int static_flash_map_entries;
 
-static struct flash_area dynamic_flash_map[MAX_PARTITIONS]; /* Need to see if there is a better way.. */
+static struct flash_area dynamic_flash_map[CONFIG_MAX_DYNAMIC_PARTITIONS];
 static int dynamic_map_entries;
-
-/* TODO: Can we try to not hardcode this? */
-static const struct flash_area storage_partition = {
-	.fa_id        = STORAGE_PARTITION_ID,
-	.fa_device_id = 0,
-
-	/* Reserve last page for storage. */
-	.fa_off       = 0xFDFA0,
-	.fa_size      = 8192,
-	.fa_dev_name  = "NRF_FLASH_DRV_NAME",
-};
 
 static struct flash_area *find_area_in_settings(int id)
 {
@@ -83,14 +72,16 @@ static struct flash_area *find_area_in_settings(int id)
 
 static struct flash_area const *get_flash_area_from_id(int idx)
 {
+	/* Always read the storage area from the static map. */
 	if (idx == STORAGE_PARTITION_ID)
-		return &storage_partition;
+		goto static_map_lookup;
 
 	struct flash_area const *area =
 			(struct flash_area const *)find_area_in_settings(idx);
 	if (area != NULL)
 		return area;
 
+static_map_lookup:
 	for (int i = 0; i < static_flash_map_entries; i++) {
 		if (static_flash_map[i].fa_id == idx) {
 			return &static_flash_map[i];

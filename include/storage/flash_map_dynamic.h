@@ -33,7 +33,6 @@ struct flash_partition_info {
 #define PARTITION_NO "partitions/#" /* Support up to 10 partitions (0-9). */
 
 #define INT_TO_CHAR(x) (x + '0')
-#define MAX_PARTITIONS 10
 
 /* Hardcoded fa_id for user. */
 #define IMAGE_0_PARTITION_ID FLASH_AREA_ID(image_0)
