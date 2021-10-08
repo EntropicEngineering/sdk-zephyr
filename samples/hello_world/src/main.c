@@ -15,22 +15,11 @@
 
 #include <storage/flash_map_dynamic.h>
 
-static void enable_settings(void)
-{
-	int rc;
-
-	rc = settings_subsys_init();
-	if (rc != 0)
-		while (1); /* TODO: Do something better here.. */
-}
-
 void main(void)
 {
 	int i, rc;
 
 	printk("Hello World! %s\n", CONFIG_BOARD);
-
-	enable_settings();
 
 	/* First time write (assuming blank settings). */
 	{
