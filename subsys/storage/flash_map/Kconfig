@@ -46,4 +46,16 @@ config FLASH_AREA_CHECK_INTEGRITY
 	  If enabled, there will be available the backend to check flash
 	  integrity using SHA-256 verification algorithm.
 
-endif
+if FLASH_MAP_DYNAMIC
+
+config MAX_DYNAMIC_PARTITIONS
+	int "Max no of partitions in settings"
+	default 5
+	help
+	  On top of the static flash map that's read from the device tree,
+	  one can add dynamic partition information using settings which
+	  take precendence over the static map. This option list the max
+	  number of partitions one can add in settings.
+
+endif # if FLASH_MAP_DYNAMIC
+endif # if FLASH_MAP
