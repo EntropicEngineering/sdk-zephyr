@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Entropic Engg
+ * Copyright (c) 2021 Entropic Engineering
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -28,7 +28,7 @@ struct flash_partition_info {
 };
 
 /* Settings "Keys" */
-#define PARTITION_CNT "partitions/cnt"
+#define PARTITION_COUNT "partitions/cnt"
 #define PARTITION_DEV_NAME "partitions/dev_name"
 #define PARTITION_NO "partitions/#" /* Support up to 10 partitions (0-9). */
 
@@ -39,13 +39,13 @@ struct flash_partition_info {
 #define IMAGE_1_PARTITION_ID FLASH_AREA_ID(image_1)
 #define STORAGE_PARTITION_ID FLASH_AREA_ID(storage)
 
-int add_partition_at_index(uint8_t no, struct flash_partition_info *partition);
-int add_partition_by_id(uint8_t id, struct flash_partition_info *partition);
-int add_partition_at_end(struct flash_partition_info *partition);
+int set_partition_at_index(uint8_t no, struct flash_partition_info *partition);
+int set_partition_by_id(uint8_t id, struct flash_partition_info *partition);
+int add_dynamic_partition(struct flash_partition_info *partition);
 
 int get_partition_at_index(uint8_t no, struct flash_partition_info *partition);
 int get_partition_by_id(int id, struct flash_partition_info *partition);
 
-int get_partition_cnt(uint8_t *cnt);
+int get_dynamic_partition_count(uint8_t *cnt);
 
 #endif /* ZEPHYR_INCLUDE_STORAGE_FLASH_MAP_DYNAMIC_H_ */
