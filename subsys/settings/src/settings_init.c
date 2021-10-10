@@ -14,7 +14,6 @@
 #include "settings/settings.h"
 #include "settings/settings_file.h"
 #include <zephyr.h>
-#include <init.h>
 
 bool settings_subsys_initialized;
 
@@ -40,12 +39,3 @@ int settings_subsys_init(void)
 
 	return err;
 }
-
-static int initialize_settings(const struct device *dev)
-{
-	ARG_UNUSED(dev);
-
-	return settings_subsys_init();;
-}
-
-SYS_INIT(initialize_settings, APPLICATION, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT);

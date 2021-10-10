@@ -26,5 +26,5 @@ const struct flash_area default_flash_map[] = {
 	DT_INST_FOREACH_STATUS_OKAY(FOREACH_PARTITION)
 };
 
-const int static_flash_map_entries = ARRAY_SIZE(default_flash_map);
-const struct flash_area *static_flash_map = default_flash_map;
+const int flash_map_entries = ARRAY_SIZE(default_flash_map);
+const struct flash_area *flash_map = default_flash_map;
