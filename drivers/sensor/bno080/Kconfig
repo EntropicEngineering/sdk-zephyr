@@ -1,0 +1,9 @@
+# Copyright (c) 2021 Entropic Engg
+#
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig BNO08X
+	bool "BNO080 9-Axis Sensor"
+	depends on SPI
+	help
+	  Enable SPI Based BNO080 9-Axis Sensor.
