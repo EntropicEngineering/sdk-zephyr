@@ -1,0 +1,26 @@
+# Copyright (c) 2021 Entropic Engg
+# SPDX-License-Identifier: Apache-2.0
+
+description: BNO08X Sensor Hub, accessed through SPI bus
+
+compatible: "hillcrest,bno08x"
+
+include: spi-device.yaml
+
+properties:
+    nrst-gpios:
+      type: phandle-array
+      required: true
+
+    intn-gpios:
+      type: phandle-array
+      required: true
+
+    wake-gpios:
+      type: phandle-array
+      required: true
+
+    bootn-gpios:
+      type: phandle-array
+      required: true
+      
