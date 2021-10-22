@@ -44,7 +44,7 @@ extern const int flash_map_entries;
 static struct flash_area const *get_flash_area_from_id(int idx)
 {
 #if defined(CONFIG_FLASH_MAP_DYNAMIC)
-    for (int i = 0; i < dynamic_flash_map_entries; i++) {
+    for (int i = 0; i < get_dynamic_flash_map_entries(); i++) {
         if (dynamic_flash_map[i].fa_dev_name != NULL &&
             dynamic_flash_map[i].fa_id == idx) {
             return &dynamic_flash_map[i];

@@ -29,8 +29,8 @@ extern "C" {
  * Array provides global pointers to data derived from flash.
  */
 extern struct flash_area const dynamic_flash_map[CONFIG_MAX_DYNAMIC_PARTITIONS];
-extern uint8_t const dynamic_flash_map_entries;
 
+uint8_t get_dynamic_flash_map_entries(void);
 int set_partition_at_index(uint8_t no, struct flash_area *partition);
 int set_partition_by_id(struct flash_area *partition);
 int add_dynamic_partition(struct flash_area *partition);

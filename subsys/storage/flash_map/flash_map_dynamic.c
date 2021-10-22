@@ -20,9 +20,7 @@ extern const int flash_map_entries;
 
 /* Array provides global pointers to data derived from settings. */
 struct flash_area const dynamic_flash_map[CONFIG_MAX_DYNAMIC_PARTITIONS] = {0};
-uint8_t const dynamic_flash_map_entries = 0;
-/* Enable local access to data. */
-static uint8_t *p_dynamic_flash_map_entries = (uint8_t *) &dynamic_flash_map_entries;
+static uint8_t dynamic_flash_map_entries = 0;
 
 /*
  * Near replica of "struct flash_area" except for fa_device_id & fa_dev_name:
@@ -97,7 +95,7 @@ static int save_partition_count_to_settings(uint8_t count) {
     rc = settings_save_one(PARTITION_COUNT, (void const *) &count, sizeof(uint8_t));
 
     if (rc == 0) {
-        *p_dynamic_flash_map_entries = count;
+        dynamic_flash_map_entries = count;
     }
 
     return rc;
@@ -148,6 +146,10 @@ static int get_partition_at_index(uint8_t no, struct flash_area *partition) {
     if (no >= dynamic_flash_map_entries) return -ENOENT;
 
     return get_partition_from_settings(no, partition);
+}
+
+uint8_t get_dynamic_flash_map_entries(void) {
+    return dynamic_flash_map_entries;
 }
 
 /* This function writes the partition number required by the user (specified by
@@ -228,10 +230,10 @@ static int initialize_dynamic_flash_map(const struct device *dev)
     fa_device_id = flash_map[0].fa_device_id;
     fa_dev_name = flash_map[0].fa_dev_name;
 
-    rc = settings_subsys_init();;
+    rc = settings_subsys_init();
     if (rc != 0) return rc;
 
-    rc = get_dynamic_partition_count(p_dynamic_flash_map_entries);
+    rc = get_dynamic_partition_count(&dynamic_flash_map_entries);
     if (rc != 0) return rc;
 
     /*
