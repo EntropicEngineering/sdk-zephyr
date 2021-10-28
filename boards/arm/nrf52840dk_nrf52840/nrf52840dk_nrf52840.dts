@@ -190,25 +190,10 @@ arduino_i2c: &i2c0 {
 
 &spi1 {
 	compatible = "nordic,nrf-spi";
-	status = "okay";
-	sck-pin = <20>;
-	mosi-pin = <22>;
-	miso-pin = <21>;
-	
-	cs-gpios = <&gpio0 23 (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>; /* TODO */
-	
-	bno08x@0 {
-		compatible = "hillcrest,bno08x";
-		reg = <0>;
-		spi-max-frequency = <2000000>; /* TODO: Need confirmation. */
-		
-		nrst-gpios  = <&gpio1 5 GPIO_ACTIVE_LOW>;
-    	intn-gpios  = <&gpio1 3 GPIO_ACTIVE_LOW>;
-	    wake-gpios  = <&gpio1 4 GPIO_ACTIVE_HIGH>;
-	    bootn-gpios = <&gpio1 6 GPIO_ACTIVE_LOW>;
-	    
-	    label = "BNO08X";
-	};
+	/* status = "okay"; */
+    sck-pin = <31>;
+    mosi-pin = <30>;
+    miso-pin = <40>;
 };
 
 &spi2 {
