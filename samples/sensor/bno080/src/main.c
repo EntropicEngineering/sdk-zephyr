@@ -51,6 +51,9 @@ static void get_product_ids(void)
 
 void main(void)
 {
+//	volatile unsigned x = 0;
+//	while (x == 0);
+
     /* Init SH2 layer */
     sh2_initialize(event_callback, NULL);
 

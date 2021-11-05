@@ -1,0 +1,11 @@
+# EE TP nRF52840 board configuration
+
+if BOARD_EE_TP_NRF52840
+
+config BOARD
+	default "ee_tp_nrf52840"
+
+config BT_CTLR
+	default BT
+
+endif # BOARD_EE_TP_NRF52840

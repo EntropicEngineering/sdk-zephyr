@@ -1,0 +1,199 @@
+/dts-v1/;
+#include <nordic/nrf52840_qiaa.dtsi>
+
+/ {
+	model = "EE TP NRF52840";
+	compatible = "prv,ee-tp-nrf52840";
+
+	aliases {
+		red-pwm-led = &red_led;
+		green-pwm-led = &green_led;
+		blue-pwm-led = &blue_led;
+	};
+
+	chosen {
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,code-partition = &slot0_partition;
+	};
+
+	pwm_leds {
+		compatible = "pwm-leds";
+		status = "okay";
+
+		red_led: led_pwm_0 {
+            status = "okay";
+			pwms = <&pwm0 7>;
+			label = "red_led";
+		};
+		green_led: led_pwm_1 {
+            status = "okay";
+			pwms = <&pwm0 11>;
+			label = "green_led";
+		};
+		blue_led: led_pwm_2 {
+            status = "okay";
+			pwms = <&pwm0 17>;
+			label = "blue_led";
+		};
+	};
+
+	buttons {
+		compatible = "gpio-keys";
+		power_button: gpio_0_30 {
+			gpios = <&gpio0 30 GPIO_ACTIVE_HIGH>;
+			label = "power_button";
+		};
+		up_button: gpio_1_07 {
+			gpios = <&gpio0 39 /* 1.07 */ (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "up_button";
+		};
+		down_button: gpio_0_2 {
+			gpios = <&gpio0 2 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "down_button";
+		};
+	};
+
+	pins {
+		compatible = "gpio-keys";
+
+		gate_a: gpio_0_14 {
+			gpios = <&gpio0 14 GPIO_ACTIVE_HIGH>;
+			label = "gate_a";
+		};
+		gate_b: gpio_0_13 {
+			gpios = <&gpio0 13 GPIO_ACTIVE_HIGH>;
+			label = "gate_b";
+		};
+
+		power_hold: gpio_0_28 {
+			gpios = <&gpio0 28 GPIO_ACTIVE_HIGH>;
+			label = "power_hold";
+		};
+
+		triacs_a: gpio_0_8 {
+			gpios = <&gpio0 8 GPIO_ACTIVE_HIGH>;
+			label = "triacs_a";
+		};
+		triacs_b: gpio_0_26 {
+			gpios = <&gpio0 26 GPIO_ACTIVE_HIGH>;
+			label = "triacs_b";
+		};
+	};
+
+	zephyr,user {
+	    io-channels = <&adc 5>;
+	};
+};
+
+&adc {
+    status = "okay";
+};
+
+&gpiote {
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+&pwm0 {
+	status = "okay";
+	ch0-pin = <7>;
+	ch1-pin = <11>;
+	ch2-pin = <17>;
+};
+
+motor_pwm: &pwm1 {
+	status = "okay";
+	ch0-pin = <41 /* 1.09 */>;
+	ch1-pin = <40 /* 1.08 */>;
+};
+
+battery_monitor_i2c: &i2c0 {
+	compatible = "nordic,nrf-twim";
+	status = "okay";
+	sda-pin = <19>;
+	scl-pin = <16>;
+};
+
+dac_spi: &spi1 {
+	compatible = "nordic,nrf-spim";
+	status = "okay";
+	sck-pin = <32 /* 1.00 */>;
+	miso-pin = <255>;
+	mosi-pin = <25>;
+	cs-gpios = <&gpio0 24 GPIO_ACTIVE_LOW>;
+};
+
+imu_spi: &spi3 {
+	compatible = "nordic,nrf-spim";
+	status = "okay";
+	sck-pin = <20>;
+	miso-pin = <21>;
+	mosi-pin = <22>;
+	// csn-pin = <23>;
+
+	cs-gpios = <&gpio0 23 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+	/* miso-pull-up; */
+	
+	bno08x@0 {
+		compatible = "hillcrest,bno08x";
+		reg = <0>;
+		spi-max-frequency = <2000000>; /* TODO: Need confirmation. */
+		
+		nrst-gpios  = <&gpio1 5 GPIO_ACTIVE_LOW>;
+    	intn-gpios  = <&gpio1 3 GPIO_ACTIVE_LOW>;
+	    wake-gpios  = <&gpio1 4 GPIO_ACTIVE_LOW>;
+	    bootn-gpios = <&gpio1 6 GPIO_ACTIVE_LOW>;
+	    
+	    label = "BNO08X";
+	};
+};
+
+&flash0 {
+
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+                /*
+                 * La la la these values don't actually matter.
+                 * Actual flash layout is defined in pm_static.yml
+                 * because ncs uses partition_manager.
+                 */
+
+		boot_partition: partition@0 {
+			label = "mcuboot";
+			reg = <0x000000000 0x00008000>;
+		};
+		slot0_partition: partition@8000 {
+			label = "image-0";
+			reg = <0x00008000 0x00040000>;
+		};
+		slot1_partition: partition@48000 {
+			label = "image-1";
+			reg = <0x00048000 0x00040000>;
+		};
+
+		/*
+		 * The flash starting at 0x000f8000 and ending at
+		 * 0x000fffff is reserved for use by the application.
+		 */
+
+		/*
+		 * Storage partition will be used by FCB/LittleFS/NVS
+		 * if enabled.
+		 */
+		storage_partition: partition@f8000 {
+			label = "storage";
+			reg = <0x000f8000 0x00008000>;
+		};
+	};
+};
