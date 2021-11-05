@@ -222,7 +222,7 @@ int sh2_hal_reset(bool dfuMode, sh2_rxCallback_t *onRx, void *cookie)
 		return ret;
 	}
 
-#if 1
+#if 0
 	static struct spi_cs_control cs;
 
 	cs.gpio_dev = device_get_binding(DT_INST_SPI_DEV_CS_GPIOS_LABEL(0));
