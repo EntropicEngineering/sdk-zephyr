@@ -95,6 +95,8 @@ static inline nrf_spim_mode_t get_nrf_spim_mode(uint16_t operation)
 	}
 }
 
+static volatile unsigned char var = 0;
+
 static inline nrf_spim_bit_order_t get_nrf_spim_bit_order(uint16_t operation)
 {
 	if (operation & SPI_TRANSFER_LSB) {
@@ -212,7 +214,8 @@ static void transfer_next_chunk(const struct device *dev)
 	}
 
 	if (get_dev_config(dev)->config.use_hw_ss == false) {
-		spi_context_cs_control(ctx, false);
+		if (var == 1)
+			spi_context_cs_control(ctx, false);
 	}
 
 	LOG_DBG("Transaction finished with status %d", error);
@@ -239,7 +242,8 @@ static int transceive(const struct device *dev,
 
 		spi_context_buffers_setup(&dev_data->ctx, tx_bufs, rx_bufs, 1);
 		if (get_dev_config(dev)->config.use_hw_ss == false) {
-			spi_context_cs_control(&dev_data->ctx, true);
+			if (var == 0)
+				spi_context_cs_control(&dev_data->ctx, true);
 		}
 
 		transfer_next_chunk(dev);
@@ -247,6 +251,7 @@ static int transceive(const struct device *dev,
 		error = spi_context_wait_for_completion(&dev_data->ctx);
 	}
 
+	var = (var + 1) % 2;
 	spi_context_release(&dev_data->ctx, error);
 
 	return error;
@@ -414,6 +419,7 @@ static int spim_nrfx_pm_control(const struct device *dev,
 	IF_ENABLED(NRFX_SPIM_EXTENDED_ENABLED,				    \
 		(.dcx_pin = SPIM_NRFX_GET_DCX_PIN(idx),			    \
 		 .use_hw_ss = DT_NODE_HAS_PROP(SPIM(idx), csn_pin), \
+		 .ss_duration = 10,\
 		 IF_ENABLED(SPIM##idx##_FEATURE_RXDELAY_PRESENT,	\
 			(.rx_delay = CONFIG_SPI_##idx##_NRF_RX_DELAY,))	\
 		))
