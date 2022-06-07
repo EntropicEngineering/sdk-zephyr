@@ -146,7 +146,7 @@ static int configure(const struct device *dev,
 	}
 
 	ctx->config = spi_cfg;
-	if (get_dev_config(dev)->config.use_hw_ss == false) {
+	if (/*get_dev_config(dev)->config.use_hw_ss == false*/true) {
 		spi_context_cs_configure(ctx);
 	}
 
@@ -213,7 +213,7 @@ static void transfer_next_chunk(const struct device *dev)
 		}
 	}
 
-	if (get_dev_config(dev)->config.use_hw_ss == false) {
+	if (/*get_dev_config(dev)->config.use_hw_ss == false*/true) {
 		if (var == 1)
 			spi_context_cs_control(ctx, false);
 	}
@@ -241,7 +241,7 @@ static int transceive(const struct device *dev,
 		dev_data->busy = true;
 
 		spi_context_buffers_setup(&dev_data->ctx, tx_bufs, rx_bufs, 1);
-		if (get_dev_config(dev)->config.use_hw_ss == false) {
+		if (/*get_dev_config(dev)->config.use_hw_ss == false*/true) {
 			if (var == 0)
 				spi_context_cs_control(&dev_data->ctx, true);
 		}
